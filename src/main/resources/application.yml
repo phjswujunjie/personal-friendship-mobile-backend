@@ -1,0 +1,86 @@
+#配置https协议
+server:
+#  ssl:
+#    key-store: classpath:8442956_learninglog.top.pfx
+#    key-store-password: eTSP6iR4
+  #配置端口号
+  port: 8888
+  #配置编码
+  servlet:
+    encoding:
+      charset: utf-8
+      force: true
+      enabled: true
+    #配置SESSION的cookie路径
+    session:
+      cookie:
+        path: /
+        http-only: true
+
+#配置数据库连接池
+spring:
+  datasource:
+    driver-class-name: com.p6spy.engine.spy.P6SpyDriver
+    type: org.apache.commons.dbcp2.BasicDataSource
+    url: jdbc:p6spy:mysql://root@localhost:3306/friendship_blog_web?useUnicode=true&characterEncoding=utf8&useSSL=false&serverTimezone=Hongkong&rewriteBatchedStatements=true&allowPublicKeyRetrieval=true
+    username: root
+    password: wjj2452483723
+  #配置静态文件访问权限
+  mvc:
+    static-path-pattern: /static/**
+    #配置视图解析器
+    view:
+      prefix:
+      suffix:
+  #配置文件上传
+  servlet:
+    multipart:
+      enabled: true
+      #100M
+      max-file-size: 104857600
+      #1000M
+      max-request-size: 1048576000
+  #设置redis
+  redis:
+    database: 0
+    host: 127.0.0.1
+    port: 6379
+    password: wjj2452483723
+    #redis的等待时间
+    lettuce:
+      pool:
+        max-active: 8
+        max-idle: 8
+        min-idle: 2
+        max-wait: -1ms
+      shutdown-timeout: 100ms
+  main:
+    banner-mode: off
+  #打包成jar包后要开启这个配置, 设置上传的图片路径为当前jar包同一目录下的static目录
+#  web:
+#    resources:
+#      static-locations: classpath:static/,file:static/
+
+#mybatis:
+#  #配置mybatis的xml扫描文件
+#  mapper-locations: classpath*:mapping/*.xml
+#  #配置实体类所在的路径
+#  type-aliases-package: com.friendship.pojo
+
+
+#配置pageHelper
+pagehelper:
+  helper-dialect: mysql
+  reasonable: true
+  support-methods-arguments: true
+  params: count=countSql
+
+#mybatis-plus:
+#  configuration:
+#    log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
+#  global-config:
+mybatis-plus:
+  global-config:
+    db-config:
+      id-type: auto
+#    banner: off

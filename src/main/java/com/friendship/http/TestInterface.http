@@ -1,0 +1,7 @@
+GET localhost:8080/friends/fans
+Content-Type: application/json
+
+{
+  "token": "003becdf3f9a41c5a16afec79c9a69d63"
+}
+> {% client.global.set("auth_token", response.body.json.token); %}
