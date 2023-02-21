@@ -12,6 +12,8 @@ public class MvcConfig implements WebMvcConfigurer {
 
     @Override
     public void addInterceptors(InterceptorRegistry registry) {
-        registry.addInterceptor(loginInterceptor).addPathPatterns("/blogs", "/users", "/users/avatars");
+        registry.addInterceptor(loginInterceptor).addPathPatterns("/blogs", "/users",
+                "/users/avatars", "/blogs/follow", "/friends", "/groups/setting/*", "/groupMessages/*",
+                "/groupMessages", "/groups");
     }
 }

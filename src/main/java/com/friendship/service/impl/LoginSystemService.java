@@ -35,7 +35,7 @@ public class LoginSystemService {
      * @param token: 传过来的token
      * @return: 返回是否登录的信息
      */
-    public Map<String, Object> loginOrOut(String token) {
+    public Boolean loginOrOut(String token) {
         //去工具类判断token是否在redis中存在来判断是否登录
         return TokenRedis.hasLogin(stringRedisTemplate, token);
     }
@@ -112,6 +112,7 @@ public class LoginSystemService {
             String token = UUID.randomUUID().toString().replaceAll("-", "") + id;
             //将token存放到redis中,并且将用户的基本信息也存放到redis中
             Map<String, Object> user_info = userMapper.getAllInfoById(Long.valueOf(id));
+            stringRedisTemplate.opsForList().leftPush("id_list", user_info.get("id") + "");
             user_info.put("id", user_info.get("id") + "");
             TokenRedis.tokenToRedis(stringRedisTemplate, token, id, user_info);
             Map<String, Object> map = new HashMap<>();

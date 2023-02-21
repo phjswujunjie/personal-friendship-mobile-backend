@@ -17,7 +17,7 @@ import javax.servlet.http.HttpServletRequest;
 @RestController
 @SuppressWarnings("all")
 @RequestMapping("/likes")
-@CrossOrigin(originPatterns = {"http://localhost:8081/", "http://localhost:8082/"}, allowCredentials = "true")
+@CrossOrigin(originPatterns = {"*"}, allowCredentials = "true")
 public class LikeController {
 
     @Autowired

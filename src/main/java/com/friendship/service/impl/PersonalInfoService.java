@@ -1,5 +1,6 @@
 package com.friendship.service.impl;
 
+import com.friendship.mapper.BlogMapper;
 import com.friendship.mapper.FriendlyRelationshipMapper;
 import com.friendship.pojo.User;
 import com.friendship.mapper.UserMapper;
@@ -29,8 +30,12 @@ public class PersonalInfoService {
     @Autowired
     private StringRedisTemplate stringRedisTemplate;
 
+    @Autowired
+    private BlogMapper blogMapper;
+
     /**
      * 通过token来得到相应的用户头像信息和id信息
+     *
      * @param token: 传过来的token
      * @return: 返回封装了头像和id信息的对象
      */
@@ -49,12 +54,13 @@ public class PersonalInfoService {
 
     /**
      * 更新用户的头像信息
+     *
      * @param avatar: 传过来的base64类型的数据
-     * @param token: 传过来的token
-     * @return: 返回是否更新成功的信息
+     * @param token:  传过来的token
      * @throws Exception
+     * @return: 返回是否更新成功的信息
      */
-    public int uploadAvatar(String avatar, String token) throws Exception {
+    public Object uploadAvatar(String avatar, String token) throws Exception {
         ValueOperations<String, String> redis = stringRedisTemplate.opsForValue();
         //则先去redis中通过token得到id,再拿id去存放头像的地址
         String id = redis.get(token);
@@ -86,24 +92,31 @@ public class PersonalInfoService {
         int i = userMapper.setAvatar(Long.valueOf(id), format + "/" + s + ".png");
         //更新redis中头像的地址信息
         stringRedisTemplate.opsForHash().put("user_" + id, "avatar", format + "/" + s + ".png");
-        return i;
+        return format + "/" + s + ".png";
     }
 
     /**
      * 用户登录时访问个人信息页面时得到的用户信息
+     *
      * @param token: 传过来的token
      * @return: 返回包含本人基本信息的数据
      */
     public Map<Object, Object> getUserInfo(String token) {
         ValueOperations<String, String> redis = stringRedisTemplate.opsForValue();
         //则先去redis中通过token得到id,再拿id在redis中得到个人数据
-        String id = redis.get(token);
+        Long id = Long.valueOf(redis.get(token));
         //返回结果信息
-        return stringRedisTemplate.opsForHash().entries("user_" + id);
+        Map map = stringRedisTemplate.opsForHash().entries("user_" + id);
+        System.out.println(map);
+        map.put("followNumber", friendMapper.getAllFollowNumber(id));
+        map.put("fansNumber",  friendMapper.getAllFansNumber(id));
+        map.put("blogNumber", blogMapper.selectBlogNumber(id));
+        return map;
     }
 
     /**
      * 用户访问别人或者自己主页时看到的用户信息
+     *
      * @param id: 被访问者的用户id
      * @return: 返回被访问者的基本信息
      */
@@ -119,8 +132,9 @@ public class PersonalInfoService {
 
     /**
      * 更新用户的基本信息
+     *
      * @param token: 传过来的token
-     * @param user: 用户更新的数据
+     * @param user:  用户更新的数据
      * @return: 返回是否更新成功
      */
     public int updateUserInfo(String token, User user) {
@@ -136,10 +150,45 @@ public class PersonalInfoService {
     }
 
     /**
+     * 1代表修改的字段为gender, 2则为nickname, 3为introduction, 4为address, 5为account
+     *
+     * @param userId: 用户id
+     * @param flag:   进行不同操作的flag值
+     * @param newVal: 修改后的值
+     * @return
+     */
+    public int updateUserInfoByFlag(Long userId, Integer flag, String newVal) {
+        try {
+            HashOperations<String, Object, Object> hashOperations = stringRedisTemplate.opsForHash();
+            switch (flag) {
+                case 1:
+                    hashOperations.put("user_" + userId, "gender", newVal);
+                    break;
+                case 2:
+                    hashOperations.put("user_" + userId, "nickname", newVal);
+                    break;
+                case 3:
+                    hashOperations.put("user_" + userId, "introduction", newVal);
+                    break;
+                case 4:
+                    hashOperations.put("user_" + userId, "address", newVal);
+                    break;
+                case 5:
+                    hashOperations.put("user_" + userId, "account", newVal);
+                    break;
+            }
+            return 1;
+        }catch (Exception e){
+            return 2;
+        }
+    }
+
+    /**
      * 根据条件搜索查询符合的用户
+     *
      * @param condition
      */
-    public List<Map<String, Object>> searchUserByCondition(String condition){
+    public List<Map<String, Object>> searchUserByCondition(String condition) {
         List<Map<String, Object>> userByCondition = userMapper.getUserByCondition(condition);
         List<Map<String, Object>> mapList = userByCondition.stream().map(p -> {
             p.put("id", "http://localhost:8082/u/" + p.get("id") + "/blog");

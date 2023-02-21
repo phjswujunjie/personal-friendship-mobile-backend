@@ -1,18 +1,44 @@
 package com.friendship.utils;
 
+import com.friendship.mapper.UserMapper;
+import com.friendship.pojo.User;
+import com.google.gson.Gson;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.redis.core.HashOperations;
+import org.springframework.data.redis.core.ListOperations;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.data.redis.core.ValueOperations;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.TimeUnit;
 
 @Component
 public class TokenRedis {
+    @Autowired
+    private StringRedisTemplate stringRedisTemplate;
 
+    @Autowired
+    private UserMapper userMapper;
+
+    @Scheduled(cron = "0 30 0 * * *")
+    public void updateUserInfoByRegular(){
+        System.out.println("定时任务执行了......");
+        ListOperations<String, String> stringStringListOperations = stringRedisTemplate.opsForList();
+        HashOperations<String, Object, Object> opsForHash = stringRedisTemplate.opsForHash();
+        Long idList = stringStringListOperations.size("id_list");
+        List<String> userId = stringStringListOperations.range("id_list", 0, idList);
+        Gson g = new Gson();
+        for (String id : userId) {
+            Map<Object, Object> user = opsForHash.entries("user_" + id);
+            User user1 = g.fromJson(g.toJson(user), User.class);
+            userMapper.updateById(user1);
+        }
+    }
 
     public static void tokenToRedis(StringRedisTemplate redis, String token, String id, Map<String, Object> userInfo) {
         //登录或者注册的话就将生成的token和account存入redis,以此来保持用户的登录状态(为什么要存放两个相反的键值对?用来实现单点登录,当同一个账号
@@ -33,12 +59,10 @@ public class TokenRedis {
      * @param token
      * @return
      */
-    public static Map<String, Object> hasLogin(StringRedisTemplate redis, String token){
-        Map<String, Object> map = new HashMap<>();
+    public static Boolean hasLogin(StringRedisTemplate redis, String token){
         //如果发过来的token为null,则直接返回没有登录的状态信息
         if (token == null){
-            map.put("loginStatus", false);
-            return map;
+           return false;
         }
         //通过token得到id
         ValueOperations<String, String> stringRedis = redis.opsForValue();
@@ -49,15 +73,13 @@ public class TokenRedis {
             String dbToken = stringRedis.get(id);
             if (Objects.equals(dbToken, token)){
                 //如果返回结果显示已经登录,则将redis中的登录状态时间重新刷新
-                map.put("loginStatus", true);
                 //这里的重新设置状态时间操作所用的值全为redis中的值,从而避免了对数据库读取的操作
                 TokenRedis.tokenToRedis(redis, token, id, null);
-                return map;
+                return true;
             }
         }
         //如果account不存在或者account对应的token与用户发送过来的token不一样,则直接返回没有登录的状态信息
-        map.put("loginStatus", false);
-        return map;
+        return false;
     }
 
     @SuppressWarnings("all")

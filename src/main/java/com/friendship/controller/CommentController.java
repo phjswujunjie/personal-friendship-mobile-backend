@@ -18,7 +18,7 @@ import java.util.Optional;
 @RestController
 @SuppressWarnings("all")
 @RequestMapping("/comments")
-@CrossOrigin(originPatterns = {"http://localhost:8081/", "http://localhost:8082/"}, allowCredentials = "true")
+@CrossOrigin(originPatterns = {"*"}, allowCredentials = "true")
 public class CommentController {
     @Autowired
     private CommentService commentService;
@@ -29,9 +29,9 @@ public class CommentController {
         if (Optional.ofNullable(request.getHeader("token")).isEmpty()){
             return new Result(Code.LOGIN_ERR.getCode(), "没有登录");
         }
-        Long token = commentService.createComment(comment, request.getHeader("token"));
-        if (Optional.ofNullable(token).isPresent()){
-            return new Result(Code.INSERT_OK.getCode(), token);
+        Comment comment1 = commentService.createComment(comment, request.getHeader("token"));
+        if (Optional.ofNullable(comment1.getId()).isPresent()){
+            return new Result(Code.INSERT_OK.getCode(), comment1);
         }
         return new Result(Code.INSERT_ERR.getCode(), "插入失败");
     }

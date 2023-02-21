@@ -5,6 +5,7 @@ import com.friendship.mapper.UserMapper;
 import com.google.gson.Gson;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
+import org.springframework.web.bind.annotation.CrossOrigin;
 
 import javax.websocket.*;
 import javax.websocket.server.ServerEndpoint;
@@ -13,6 +14,7 @@ import java.util.Map;
 
 @ServerEndpoint("/loginInfoWebSocket")
 @Component
+@CrossOrigin(originPatterns = {"*"}, allowCredentials = "true")
 public class SaveLoginInfoWebSocket {
 
     //为什么要用static?因为spring默认只会创建一个对象, 而websocket由于有多个客户端则会创建多个websocket对象, 所以应该让此对象被所有的websocket

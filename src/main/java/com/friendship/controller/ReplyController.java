@@ -20,7 +20,7 @@ import java.util.Optional;
 @RestController
 @SuppressWarnings("all")
 @RequestMapping("/replies")
-@CrossOrigin(originPatterns = {"http://localhost:8081/", "http://localhost:8082/"}, allowCredentials = "true")
+@CrossOrigin(originPatterns = {"*"}, allowCredentials = "true")
 public class ReplyController {
     @Autowired
     private ReplyService replyService;
@@ -31,17 +31,17 @@ public class ReplyController {
         if (Optional.ofNullable(request.getHeader("token")).isEmpty()){
             return new Result(Code.LOGIN_ERR.getCode(), "没有登录");
         }
-        Long replyId = replyService.createComment(reply, request.getHeader("token"));
-        if(Optional.ofNullable(replyId).isEmpty()){
+        Map<String, Object> replys = replyService.createReply(reply, request.getHeader("token"));
+        if(Optional.ofNullable(replys.get("id")).isEmpty()){
             return new Result(Code.INSERT_ERR.getCode(), "插入失败");
         }
-        return new Result(Code.INSERT_OK.getCode(), replyId);
+        return new Result(Code.INSERT_OK.getCode(), replys);
     }
 
     //根据评论的id得到该评论的全部回复信息
     @GetMapping("/{id}")
     public Result getReplybyCommentId(@PathVariable Long id){
-        List<Map<String, Object>> replyByCommentId = replyService.getReplyByCommentId(id);
+        List<List<Map<String, Object>>> replyByCommentId = replyService.getReplyByCommentId(id);
         return new Result(Code.SELECT_OK.getCode(), replyByCommentId);
     }
 }

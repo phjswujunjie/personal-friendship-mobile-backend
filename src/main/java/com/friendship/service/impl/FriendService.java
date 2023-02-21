@@ -10,6 +10,8 @@ import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 
 import java.text.SimpleDateFormat;
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
 import java.util.*;
 
 @Service
@@ -30,8 +32,7 @@ public class FriendService {
      */
     public int addFriend(String token, Long followId) {
         Long userId = Long.valueOf(Objects.requireNonNull(stringRedisTemplate.opsForValue().get(token)));
-        SimpleDateFormat simpleDateFormat = new SimpleDateFormat("yyyy-MM-dd");
-        String format = simpleDateFormat.format(new Date());
+        String format = DateTimeFormatter.ofPattern("yyyy-MM-dd").format(LocalDate.now());
         FriendlyRelationship friend = new FriendlyRelationship(userId, followId, format);
         int result = friendMapper.relationshipIsExist(userId, followId);
         if (result == 1) {
@@ -48,27 +49,28 @@ public class FriendService {
      * @return: 返回两个用户之间的关系(2代表好友关系, 0代表没有关系, 4代表了访问者关注了被访问者, 8代表被访问者为访问者的粉丝)
      */
     public int queryRelation(String token, Long anotherUserId) {
-        if (token != null){
-            Map<String, Object> map1 = TokenRedis.hasLogin(stringRedisTemplate, token);
-            if (!(boolean)map1.get("loginStatus")){
+        if (token != null) {
+            if (TokenRedis.hasLogin(stringRedisTemplate, token)){
                 return -1;
             }
             Long userId = Long.valueOf(Objects.requireNonNull(stringRedisTemplate.opsForValue().get(token)));
             List<Map<String, Object>> mapList = friendMapper.queryRelation(userId, anotherUserId);
             //如果结果数量为0则代表没有关系, 为2则代表为朋友关系
-            if (mapList.size() != 1) {
-                return mapList.size();
+            if (mapList.size() == 0) {
+                return 50000;
+            } else if (mapList.size() == 2) {
+                return 50003;
             }
             //为1则代表两个人之间有关注关系(但是不知道谁关注了谁)
             Map<String, Object> map = mapList.get(0);
             Long user_id = Long.valueOf(map.get("userId") + "");
             if (user_id.equals(userId)) {
                 //访问者关注了被访问者
-                return 4;
+                return 50002;
             }
             //被访问者为访问者的粉丝
-            return 8;
-        }else {
+            return 50001;
+        } else {
             return -1;
         }
     }
@@ -96,14 +98,17 @@ public class FriendService {
         List<Map<String, Object>> listFriend = new LinkedList<>();
         List<Long> allFollowInfo;
         Long userId = Long.valueOf(Objects.requireNonNull(stringRedisTemplate.opsForValue().get(token)));
+        Integer relation;
         if (flag == 1) {
             allFollowInfo = friendMapper.getFollow(userId);
+            relation = 50002;
         } else {
             allFollowInfo = friendMapper.getFans(userId);
+            relation = 50001;
         }
-        processUserInfo(listFollowOrFans, allFollowInfo);
+        processUserInfo(listFollowOrFans, allFollowInfo, relation);
         List<Long> allFriendInfo = friendMapper.getFriends(userId);
-        processUserInfo(listFriend, allFriendInfo);
+        processUserInfo(listFriend, allFriendInfo, 50003);
         list.add(listFollowOrFans);
         list.add(listFriend);
         return list;
@@ -118,7 +123,7 @@ public class FriendService {
         List<Map<String, Object>> listFriend = new LinkedList<>();
         Long userId = Long.valueOf(Objects.requireNonNull(stringRedisTemplate.opsForValue().get(token)));
         List<Long> allFriendInfo = friendMapper.getFriends(userId);
-        processUserInfo(listFriend, allFriendInfo);
+        processUserInfo(listFriend, allFriendInfo, 50003);
         return listFriend;
     }
 
@@ -127,7 +132,7 @@ public class FriendService {
      * @param listFriend: 包含全部用户信息的集合对象
      * @param allFriendInfo: 包含全部用户id信息的集合对象(用id来查到相应的用户信息)
      */
-    private void processUserInfo(List<Map<String, Object>> listFriend, List<Long> allFriendInfo) {
+    private void processUserInfo(List<Map<String, Object>> listFriend, List<Long> allFriendInfo, Integer relation) {
         if (allFriendInfo.size() != 0) {
             List<User> users = userMapper.selectBatchIds(allFriendInfo);
             for (User user : users) {
@@ -137,6 +142,7 @@ public class FriendService {
                 map.put("avatar", "http://localhost:8888/static/upload/" + user.getAvatar());
                 map.put("nickname", user.getNickname());
                 map.put("introduction", user.getIntroduction());
+                map.put("relation", relation);
                 listFriend.add(map);
             }
         }

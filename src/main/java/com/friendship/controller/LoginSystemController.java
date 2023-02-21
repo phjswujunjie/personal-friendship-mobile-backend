@@ -23,7 +23,7 @@ import java.util.Map;
  * 处理注册登录以及权限控制的类
  */
 @RestController
-@CrossOrigin(originPatterns = {"http://localhost:8081", "http://localhost:8082/"}, allowCredentials = "true")
+@CrossOrigin(originPatterns = {"*"}, allowCredentials = "true")
 @SuppressWarnings("all")
 public class LoginSystemController {
 
@@ -47,8 +47,7 @@ public class LoginSystemController {
         //得到前端带过来的token
         String token = request.getHeader("token");
         //去业务层进行判断
-        Map<String, Object> map = loginSystemService.loginOrOut(token);
-        if ((boolean) map.get("loginStatus")) {
+        if (loginSystemService.loginOrOut(token)) {
             return new Result(Code.LOGIN_OK.getCode(), "登陆成功");
         }
         return new Result(Code.LOGIN_ERR.getCode(), "登陆信息不正确");

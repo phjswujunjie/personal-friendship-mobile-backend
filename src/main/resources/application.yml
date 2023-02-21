@@ -68,6 +68,7 @@ spring:
 #  type-aliases-package: com.friendship.pojo
 
 
+
 #配置pageHelper
 pagehelper:
   helper-dialect: mysql
@@ -83,4 +84,6 @@ mybatis-plus:
   global-config:
     db-config:
       id-type: auto
+  mapper-locations: classpath:mapping/*.xml
+  type-aliases-package: com.friendship.pojo
 #    banner: off

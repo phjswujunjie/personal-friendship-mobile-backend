@@ -11,6 +11,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -20,7 +21,7 @@ import java.util.Map;
 @RestController
 @SuppressWarnings("all")
 @RequestMapping("/blogs")
-@CrossOrigin(originPatterns = {"http://localhost:8081/", "http://localhost:63342/", "http://localhost:8082/"}, allowCredentials = "true")
+@CrossOrigin(originPatterns = {"*"}, allowCredentials = "true")
 public class BlogController {
 
     @Autowired
@@ -44,7 +45,14 @@ public class BlogController {
     //得到附近全部的博客信息
     @GetMapping("/around")
     public Result displayAroundBlog(HttpServletRequest request){
+        int i = 1 / 0;
         List<Map<String, Object>> mapList = blogService.displayBlog(request);
+        return new Result(Code.SELECT_OK.getCode(), mapList);
+    }
+
+    @GetMapping("/follow")
+    public Result displayFollowBlog(HttpServletRequest request){
+        List<Map<String, Object>> mapList = blogService.getBlogsOfFollowers(request.getHeader("token"));
         return new Result(Code.SELECT_OK.getCode(), mapList);
     }
 

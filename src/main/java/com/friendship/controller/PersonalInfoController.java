@@ -20,7 +20,7 @@ import java.util.Map;
 @RestController
 @SuppressWarnings("all")
 @RequestMapping("/users")
-@CrossOrigin(originPatterns = {"http://localhost:8081/", "http://localhost:8082/"}, allowCredentials = "true")
+@CrossOrigin(originPatterns = {"*"}, allowCredentials = "true")
 public class PersonalInfoController {
 
     @Autowired
@@ -53,12 +53,8 @@ public class PersonalInfoController {
     public Result updateAvatar(String avatar, HttpServletRequest request) throws Exception{
         //得到token
         String token = request.getHeader("token");
-        int result = personalInfoService.uploadAvatar(avatar, token);
-        if (result == 1){
-            return new Result(Code.UPDATE_OK.getCode(), "更新成功");
-        }else {
-            return new Result(Code.UPDATE_ERR.getCode(), "更新失败");
-        }
+        Object result = personalInfoService.uploadAvatar(avatar, token);
+        return new Result(Code.UPDATE_OK.getCode(), result);
     }
 
     //得到用户的全部信息
@@ -71,6 +67,12 @@ public class PersonalInfoController {
         return new Result(Code.SELECT_OK.getCode(), allInfo);
     }
 
+    /**
+     * 访问用户主页根据id来得到用户的全部信息
+     * @param id
+     * @param request
+     * @return
+     */
     @GetMapping("/{id}")
     public Result getUserInfoById(@PathVariable String id, HttpServletRequest request){
         Map<Object, Object> allInfo = personalInfoService.getUserInfoById(id);
@@ -95,6 +97,19 @@ public class PersonalInfoController {
             return new Result(Code.UPDATE_OK.getCode(), "更新成功");
         }else {
             return new Result(Code.UPDATE_ERR.getCode(), "更新失败");
+        }
+    }
+
+    @PutMapping("/change/{flag}")
+    public Result updateUserGender(@PathVariable Integer flag,HttpServletRequest request, String newVal){
+        String token = request.getHeader("token");
+        System.out.println("flag is" + flag);
+        Long userId = Long.valueOf(stringRedisTemplate.opsForValue().get(token));
+        Integer result = personalInfoService.updateUserInfoByFlag(userId, flag, newVal);
+        if (result == 1){
+            return new Result(Code.UPDATE_OK.getCode(), "修改成功");
+        }else {
+            return new Result(Code.UPDATE_ERR.getCode(), "修改失败");
         }
     }
 

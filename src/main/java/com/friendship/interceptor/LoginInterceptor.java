@@ -36,8 +36,7 @@ public class LoginInterceptor implements HandlerInterceptor {
         }
         String token = request.getHeader("token");
         if (token != null) {
-            Map<String, Object> map = TokenRedis.hasLogin(stringRedisTemplate, token);
-            if ((boolean) map.get("loginStatus")) {
+            if (TokenRedis.hasLogin(stringRedisTemplate, token)) {
                 return true;
             }
         }

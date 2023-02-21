@@ -6,6 +6,7 @@ import com.google.gson.Gson;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Component;
+import org.springframework.web.bind.annotation.CrossOrigin;
 
 import javax.websocket.*;
 import javax.websocket.server.ServerEndpoint;
@@ -18,6 +19,7 @@ import java.util.concurrent.ConcurrentHashMap;
 //操作用户聊天信息的websocket
 @ServerEndpoint("/chatWebSocket")
 @Component
+@CrossOrigin(originPatterns = {"*"}, allowCredentials = "true")
 public class FriendshipWebSocket {
 
     private static ChatMessageMapper chatMessageMapper;
@@ -60,7 +62,6 @@ public class FriendshipWebSocket {
         System.out.println("传过来的数据" + message);
         if (map.size() == 2) {
             //用户点击了某个朋友的聊天窗口则将所有的未读信息清除
-            System.out.println(map);
             userId = Long.valueOf((String) map.get("userId"));
             Long toId = Long.valueOf((String) map.get("toId"));
             ChatMessageContainer.userMap.get(userId).setSession(session);
@@ -74,28 +75,18 @@ public class FriendshipWebSocket {
             ChatMessage chatMessage = g.fromJson(message, ChatMessage.class);
             chatMessage.setUserId(Long.valueOf((String) map.get("userId")));
             chatMessage.setToId(Long.valueOf((String) map.get("toId")));
-            System.out.println("chat is " + chatMessage);
             chatMessage.setCreateTime(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss").format(LocalDateTime.now()));
             chatMessage.setIsDelete(0);
             chatMessageMapper.insert(chatMessage);
             FriendshipWebSocket toUser = ChatMessageContainer.userMap.get(chatMessage.getToId());
             Map<String, Object> messageMap = new HashMap<>();
-            messageMap.put("content", chatMessage.getContent());
-            messageMap.put("createTime", chatMessage.getCreateTime());
-            messageMap.put("avatar", "http://localhost:8080/static/upload/" +
-                    stringRedisTemplate.opsForHash().get("user_" + chatMessage.getUserId(), "avatar"));
-            messageMap.put("userId", chatMessage.getUserId());
-            messageMap.put("toId", chatMessage.getToId());
-            messageMap.put("isDelete", chatMessage.getIsDelete());
-            messageMap.put("nickname",  stringRedisTemplate.opsForHash().get("user_" + chatMessage.getUserId(), "nickname"));
-            messageMap.put("media", chatMessage.getMedia());
-            messageMap.put("id", chatMessage.getId());
-            System.out.println("messagemap is " + messageMap);
+            // 将ChatMessage的信息转换到Map中
+            processMap(messageMap, chatMessage);
             if (toUser != null && toUser.getSession() != null) {
-                System.out.println("开始发送了。。。。");
+                // 将信息利用webSocket推送到目标用户
                 toUser.getSession().getBasicRemote().sendText(g.toJson(messageMap));
             } else {
-                System.out.println("没有发送");
+                // 储存未读信息
                 Long toId = chatMessage.getToId();
                 if (ChatMessageContainer.messageMap.get(toId) == null) {
                     List<Map<String, Object>> messageList = Collections.synchronizedList(new ArrayList<>());
@@ -124,5 +115,18 @@ public class FriendshipWebSocket {
     public void onError(Session session, Throwable throwable) {
         System.out.println("错误代码");
         throwable.printStackTrace();
+    }
+
+    private void processMap(Map<String, Object> messageMap, ChatMessage chatMessage) {
+        messageMap.put("content", chatMessage.getContent());
+        messageMap.put("createTime", chatMessage.getCreateTime());
+        messageMap.put("avatar", "http://localhost:8888/static/upload/" +
+                stringRedisTemplate.opsForHash().get("user_" + chatMessage.getUserId(), "avatar"));
+        messageMap.put("userId", chatMessage.getUserId());
+        messageMap.put("toId", chatMessage.getToId());
+        messageMap.put("isDelete", chatMessage.getIsDelete());
+        messageMap.put("nickname",  stringRedisTemplate.opsForHash().get("user_" + chatMessage.getUserId(), "nickname"));
+        messageMap.put("media", chatMessage.getMedia());
+        messageMap.put("id", chatMessage.getId());
     }
 }

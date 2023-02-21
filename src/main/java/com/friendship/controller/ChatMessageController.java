@@ -17,7 +17,7 @@ import java.util.concurrent.ConcurrentHashMap;
  */
 @RestController
 @RequestMapping("/chatMessages")
-@CrossOrigin(originPatterns = {"http://localhost:8081/", "http://localhost:8082/"}, allowCredentials = "true")
+@CrossOrigin(originPatterns = {"*"}, allowCredentials = "true")
 public class ChatMessageController {
 
     @Autowired
@@ -54,26 +54,8 @@ public class ChatMessageController {
 
     @PostMapping("/storageUnreadMessage")
     public Result storageUnreadMessage(HttpServletRequest request, String content, Long fromId, String createTime, String avatar){
-        Long toId = Long.valueOf(Objects.requireNonNull(stringRedisTemplate.opsForValue().get(request.getHeader("token"))));
-        Map<String, Object> messageMap = new HashMap<>();
-        messageMap.put("content", content);
-        messageMap.put("createTime", createTime);
-        messageMap.put("fromUserAvatar", avatar);
-        messageMap.put("fromId",fromId);
-        if (Optional.ofNullable(ChatMessageContainer.messageMap.get(toId)).isEmpty()) {
-            List<Map<String, Object>> messageList = Collections.synchronizedList(new ArrayList<>());
-            messageList.add(messageMap);
-            Map<Long, List<Map<String, Object>>> unreadMessageMap = new ConcurrentHashMap<>();
-            unreadMessageMap.put(fromId, messageList);
-            ChatMessageContainer.messageMap.put(toId, unreadMessageMap);
-        } else if (Optional.ofNullable(ChatMessageContainer.messageMap.get(toId).get(fromId)).isEmpty()) {
-            List<Map<String, Object>> messageList = Collections.synchronizedList(new ArrayList<>());
-            messageList.add(messageMap);
-            ChatMessageContainer.messageMap.get(toId).put(fromId, messageList);
-        } else {
-            ChatMessageContainer.messageMap.get(toId).get(fromId).add(messageMap);
-        }
-        return new Result(Code.SELECT_OK.getCode(), "储存未读信息");
+        chatMessageService.storageUnreadChatMessage(request, content, fromId, createTime, avatar);
+        return new Result(Code.INSERT_OK.getCode(), "插入成功");
     }
 
 

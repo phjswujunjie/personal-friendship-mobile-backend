@@ -19,7 +19,7 @@ import java.util.*;
 @RestController
 @SuppressWarnings("all")
 @RequestMapping("/friends")
-@CrossOrigin(originPatterns = {"http://localhost:8081/", "http://localhost:8082/"}, allowCredentials = "true")
+@CrossOrigin(originPatterns = {"*"}, allowCredentials = "true")
 public class FriendController {
     @Autowired
     private FriendService friendService;
@@ -33,13 +33,13 @@ public class FriendController {
     public Result queryIsFollower(@PathVariable Long otherId, HttpServletRequest request, HttpServletResponse response){
         String token = request.getHeader("token");
         int i = friendService.queryRelation(token, otherId);
-        if(i == 2){
+        if(i == 50003){
             return new Result(Code.IS_A_FRIEND.getCode(), "是朋友关系");
-        }else if (i == 0){
+        }else if (i == 50000){
             return new Result(Code.NOT_HAVE_RELATION.getCode(), "二者没有关系");
-        } else if (i == 4) {
+        } else if (i == 50002) {
             return new Result(Code.IS_A_FOLLOW.getCode(), "访问者关注了被访问者");
-        }else if (i == 8){
+        }else if (i == 50001){
             return new Result(Code.IS_A_FANS.getCode(), "被访问者为访问者的粉丝");
         }else {
             return new Result(Code.LOGIN_ERR.getCode(), "没有登录");

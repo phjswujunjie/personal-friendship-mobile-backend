@@ -1,6 +1,7 @@
 package com.friendship.service.impl;
 
 import com.friendship.mapper.BlogLikeMapper;
+import com.friendship.mapper.FriendlyRelationshipMapper;
 import com.friendship.pojo.Blog;
 import com.friendship.mapper.BlogMapper;
 import com.friendship.mapper.UserMapper;
@@ -37,6 +38,8 @@ public class BlogService {
     private BlogMapper blogMapper;
     @Autowired
     private FriendService friendService;
+    @Autowired
+    private FriendlyRelationshipMapper friendlyRelationshipMapper;
     @Autowired
     private BlogLikeMapper blogLikeMapper;
 
@@ -98,9 +101,8 @@ public class BlogService {
         List<Map<String, Object>> mapList;
         //如果id数组长度为0则代表是访问了around这个页面
         String token = request.getHeader("token");
-        Map<String, Object> loginMap = TokenRedis.hasLogin(stringRedisTemplate, token);
         //通过token去判断登录情况
-        Boolean loginStatus = (Boolean) loginMap.get("loginStatus");
+        Boolean loginStatus = TokenRedis.hasLogin(stringRedisTemplate, token);
         if (id.length == 0) {
             //得到公开的博客信息
             mapList = blogMapper.displayAroundBlog();
@@ -130,6 +132,24 @@ public class BlogService {
     }
 
     /**
+     * 返回用户所关注的人的全部博客
+     * @param token: 用户的token信息
+     * @return
+     */
+    public List<Map<String, Object>> getBlogsOfFollowers(String token) {
+        Long userId = Long.valueOf(stringRedisTemplate.opsForValue().get(token));
+        List<Long> idList = friendlyRelationshipMapper.getAllFollower(userId);
+        idList.add(userId);
+        List<Map<String, Object>> blogList = blogMapper.getBlogsOfFollowers(idList);
+        for (Map<String, Object> map : blogList) {
+            processBlogData(map);
+            map.put("isLike", blogLikeMapper.queryIsLike(userId, Long.valueOf(map.get("id") + "")));
+            map.put("loginStatus", true);
+        }
+        return blogList;
+    }
+
+    /**
      * 根据id删除对应的博客
      *
      * @param id: 要删除博客的id
@@ -154,9 +174,8 @@ public class BlogService {
         if (token != null) {
             selfId = stringRedisTemplate.opsForValue().get(token);
             selfAvatar = (String) stringRedisTemplate.opsForHash().get("user_" + selfId, "avatar");
-            Map<String, Object> statusMap = TokenRedis.hasLogin(stringRedisTemplate, token);
             //通过token去判断登录情况
-            loginStatus = (Boolean) statusMap.get("loginStatus");
+            loginStatus = TokenRedis.hasLogin(stringRedisTemplate, token);
         } else {
             loginStatus = false;
         }
@@ -198,6 +217,6 @@ public class BlogService {
         String[] video = map.get("video").toString().split(";");
         List<String> videoList = Stream.of(video).map(v -> "http://localhost:8888/static/upload/" + v).toList();
         map.put("video", videoList);
-        map.put("userUrl", "http://localhost:8082/u/" + map.get("userId") + "/blog");
+        map.put("userUrl", "http://localhost:8082/u/" + map.get("userId"));
     }
 }
