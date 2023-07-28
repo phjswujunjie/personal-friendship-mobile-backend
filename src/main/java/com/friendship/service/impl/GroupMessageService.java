@@ -6,36 +6,41 @@ import com.friendship.mapper.UserGroupMapper;
 import com.friendship.mapper.UserGroupRelationMapper;
 import com.friendship.pojo.UserGroup;
 import com.friendship.pojo.UserGroupRelation;
+import com.friendship.utils.CommonString;
+import com.friendship.websocket.ChatMessageContainer;
 import org.checkerframework.checker.units.qual.A;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.redis.core.HashOperations;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 
+import javax.annotation.Resource;
 import javax.servlet.http.HttpServletRequest;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
 @Service
 public class GroupMessageService {
-    @Autowired
+    @Resource
     private GroupMessageMapper groupMessageMapper;
 
-    @Autowired
+    @Resource
     private UserGroupMapper userGroupMapper;
 
-    @Autowired
+    @Resource
     private UserGroupRelationMapper userGroupRelationMapper;
 
-    @Autowired
+    @Resource
     private StringRedisTemplate stringRedisTemplate;
 
     /**
      * 根据群组id得到相关的信息
-     * @param id: 群组id
+     *
+     * @param id:     群组id
      * @param request
      * @return
      */
@@ -52,14 +57,14 @@ public class GroupMessageService {
         HashOperations<String, Object, Object> opsForHash = stringRedisTemplate.opsForHash();
         // 处理群聊信息
         ArrayList<Map<String, Object>> collect = groupMessageList.stream().map(p -> {
-            p.put("avatar", "http://localhost:8888/static/upload/" + opsForHash.get("user_" + p.get("userId"), "avatar"));
+            p.put("avatar", CommonString.RESOURCES_ADDRESS + opsForHash.get("user_" + p.get("userId"), "avatar"));
             p.put("nickname", opsForHash.get("user_" + p.get("userId"), "nickname"));
             return p;
         }).collect(Collectors.toCollection(ArrayList::new));
         // 得到自己的头像,昵称,id
         Map<String, Object> map = new HashMap<>();
         map.put("selfId", userId);
-        map.put("selfAvatar", "http://localhost:8888/static/upload/" + opsForHash.get("user_" + userId, "avatar"));
+        map.put("selfAvatar", CommonString.RESOURCES_ADDRESS + opsForHash.get("user_" + userId, "avatar"));
         // 再查询群名
         // 群的配置信息表
         UserGroup userGroup = userGroupMapper.selectById(id);
@@ -71,7 +76,13 @@ public class GroupMessageService {
         map.put("selfNickname", ("").equals(relation.getGroupNickname()) ? opsForHash.get("user_" + userId, "nickname") : relation.getGroupNickname());
         // 得到群聊的人数
         map.put("groupMemberNumber", userGroup.getGroupMemberNumber());
+        // 再将用户的该群聊的未读信息数目重置为0
         collect.add(0, map);
+        Map<Long, Map<Long, AtomicInteger>> groupMessageNumberMap = ChatMessageContainer.groupMessageNumberMap;
+        if (groupMessageNumberMap.get(userId) != null && groupMessageNumberMap.get(userId).get(id) != null) {
+            // 如果有未读信息, 则将未读信息设置为0即可
+            groupMessageNumberMap.get(userId).get(id).getAndUpdate((x) -> x = 0);
+        }
         return collect;
     }
 }

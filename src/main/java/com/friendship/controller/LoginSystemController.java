@@ -14,6 +14,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import javax.annotation.Resource;
 import javax.servlet.http.HttpServletRequest;
 import javax.validation.Valid;
 import java.util.HashMap;
@@ -24,16 +25,15 @@ import java.util.Map;
  */
 @RestController
 @CrossOrigin(originPatterns = {"*"}, allowCredentials = "true")
-@SuppressWarnings("all")
 public class LoginSystemController {
 
-    @Autowired
+    @Resource
     private LoginSystemService loginSystemService;
 
-    @Autowired
+    @Resource
     private StringRedisTemplate stringRedisTemplate;
 
-    @Autowired
+    @Resource
     private UserMapper userMapper;
 
     /**
@@ -48,9 +48,9 @@ public class LoginSystemController {
         String token = request.getHeader("token");
         //去业务层进行判断
         if (loginSystemService.loginOrOut(token)) {
-            return new Result(Code.LOGIN_OK.getCode(), "登陆成功");
+            return new Result(Code.OK.getCode(), "登陆成功");
         }
-        return new Result(Code.LOGIN_ERR.getCode(), "登陆信息不正确");
+        return new Result(Code.UNAUTHORIZED.getCode(), "登陆信息不正确");
     }
 
     /**
@@ -66,9 +66,9 @@ public class LoginSystemController {
         Map<String, Object> map = loginSystemService.userIsExists(account, password);
         if ((boolean) map.get("loginStatus")) {
             map.remove("loginStatus");
-            return new Result(Code.LOGIN_OK.getCode(), map);
+            return new Result(Code.OK.getCode(), map);
         }
-        return new Result(Code.LOGIN_ERR.getCode(), "登陆信息不正确");
+        return new Result(Code.UNAUTHORIZED.getCode(), "登陆信息不正确");
     }
 
     /**

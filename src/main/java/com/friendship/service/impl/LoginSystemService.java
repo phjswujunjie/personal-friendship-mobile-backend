@@ -12,6 +12,7 @@ import org.springframework.data.redis.core.ValueOperations;
 import org.springframework.stereotype.Service;
 import org.springframework.validation.BindingResult;
 
+import javax.annotation.Resource;
 import java.text.SimpleDateFormat;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
@@ -21,13 +22,12 @@ import java.util.Map;
 import java.util.UUID;
 
 @Service
-@SuppressWarnings("all")
 public class LoginSystemService {
 
-    @Autowired
+    @Resource
     private UserMapper userMapper;
 
-    @Autowired
+    @Resource
     private StringRedisTemplate stringRedisTemplate;
 
     /**
@@ -99,7 +99,7 @@ public class LoginSystemService {
             int result1 = userMapper.accountIsExists(user.getAccount());
             //如果已经存在则直接返回错误信息
             if (result1 == 1) {
-                return new Result(Code.INSERT_ERR.getCode(), "注册失败");
+                return new Result(Code.BAD_REQUEST.getCode(), "注册失败");
             }
             //对password进行加密
             user.setPassword(MD5.getEncryption(user.getPassword()));
@@ -112,14 +112,14 @@ public class LoginSystemService {
             String token = UUID.randomUUID().toString().replaceAll("-", "") + id;
             //将token存放到redis中,并且将用户的基本信息也存放到redis中
             Map<String, Object> user_info = userMapper.getAllInfoById(Long.valueOf(id));
-            stringRedisTemplate.opsForList().leftPush("id_list", user_info.get("id") + "");
+            stringRedisTemplate.opsForSet().add("id_set", user_info.get("id") + "");
             user_info.put("id", user_info.get("id") + "");
             TokenRedis.tokenToRedis(stringRedisTemplate, token, id, user_info);
             Map<String, Object> map = new HashMap<>();
             //返回是否成功的结果和token
             map.put("token", token);
-            return new Result(Code.INSERT_OK.getCode(), map);
+            return new Result(Code.OK.getCode(), map);
         }
-        return new Result(Code.INSERT_ERR.getCode(), "注册失败");
+        return new Result(Code.BAD_REQUEST.getCode(), "注册失败");
     }
 }

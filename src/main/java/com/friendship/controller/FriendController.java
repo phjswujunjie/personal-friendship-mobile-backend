@@ -1,5 +1,6 @@
 package com.friendship.controller;
 
+import com.friendship.accessControl.LoginRequired;
 import com.friendship.currentLimiting.TokenLimit;
 import com.friendship.pojo.Code;
 import com.friendship.pojo.Result;
@@ -9,6 +10,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.web.bind.annotation.*;
 
+import javax.annotation.Resource;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import java.util.*;
@@ -17,14 +19,13 @@ import java.util.*;
  * 处理好友关系的类
  */
 @RestController
-@SuppressWarnings("all")
 @RequestMapping("/friends")
 @CrossOrigin(originPatterns = {"*"}, allowCredentials = "true")
 public class FriendController {
-    @Autowired
+    @Resource
     private FriendService friendService;
 
-    @Autowired
+    @Resource
     private StringRedisTemplate stringRedisTemplate;
 
     //当用户访问其他用户主页时, 判断其他用户是否被使用者关注
@@ -42,80 +43,68 @@ public class FriendController {
         }else if (i == 50001){
             return new Result(Code.IS_A_FANS.getCode(), "被访问者为访问者的粉丝");
         }else {
-            return new Result(Code.LOGIN_ERR.getCode(), "没有登录");
+            return new Result(Code.UNAUTHORIZED.getCode(), "没有登录");
         }
     }
 
     //添加关注
+    @LoginRequired
     @PostMapping("/{followId}")
     public Result addFriend(@PathVariable Long followId, HttpServletRequest request){
         String token = request.getHeader("token");
         int i = friendService.addFriend(token, followId);
         if (i == 1){
-            return new Result(Code.INSERT_OK.getCode(), "添加成功");
+            return new Result(Code.OK.getCode(), "添加成功");
         }else {
-            return new Result(Code.INSERT_ERR.getCode(), "添加失败");
+            return new Result(Code.BAD_REQUEST.getCode(), "添加失败");
         }
     }
 
     //取消关注
+    @LoginRequired
     @DeleteMapping("/{followId}")
     public Result deleteFriend(@PathVariable Long followId, HttpServletRequest request){
         String token = request.getHeader("token");
         int i = friendService.deleteFriend(token, followId);
         if (i == 1){
-            return new Result(Code.DELETE_OK.getCode(), "取消关注成功!");
+            return new Result(Code.OK.getCode(), "取消关注成功!");
         }else {
-            return new Result(Code.DELETE_ERR.getCode(), "取消关注失败!");
+            return new Result(Code.BAD_REQUEST.getCode(), "取消关注失败!");
         }
     }
 
     //得到用户的全部关注
+    @LoginRequired
     @GetMapping("/follow")
     public Result getAllFollowInfo(HttpServletRequest request){
         String token = request.getHeader("token");
         List<List<Map<String, Object>>> allFollowInfo = friendService.getAllFollowOrFansInfo(token, 1);
-        return new Result(Code.SELECT_OK.getCode(), allFollowInfo);
+        return new Result(Code.OK.getCode(), allFollowInfo);
     }
 
+
+    @LoginRequired
     @GetMapping
     public Result getAllFriendInfo(HttpServletRequest request){
         String token = request.getHeader("token");
-        List<Map<String, Object>> allFollowInfo = friendService.getAllFriendInfo(token);
-        return new Result(Code.SELECT_OK.getCode(), allFollowInfo);
+        List<List<Map<String, Object>>> allFollowInfo = friendService.getAllFriendInfo(token);
+        return new Result(Code.OK.getCode(), allFollowInfo);
     }
 
+    @LoginRequired
     @GetMapping("/fans")
     public Result getAllFansInfo(HttpServletRequest request){
         String token = request.getHeader("token");
         List<List<Map<String, Object>>> allFansInfo = friendService.getAllFollowOrFansInfo(token, 2);
-        return new Result(Code.SELECT_OK.getCode(), allFansInfo);
+        return new Result(Code.OK.getCode(), allFansInfo);
     }
 
+    @LoginRequired
     @PostMapping ("/queryStatus")
-    public Result getFriendsStatus(Long[] idList, HttpServletRequest request){
+    public Result getFriendsAndGroupStatus(Long[] idList, HttpServletRequest request){
         Long userId = Long.valueOf(stringRedisTemplate.opsForValue().get(request.getHeader("token")));
-        Map<Long, Boolean> map = new HashMap<>();
-        Map<Long, Integer> messageNumberMap = new HashMap<>();
-        Map<Long, Map<String, Object>> messageMap = new HashMap<>();
-        for (Long id : idList) {
-            map.put(id, ChatMessageContainer.userMap.containsKey(id));
-        }
-        Map<Long, List<Map<String, Object>>> messageListMap = ChatMessageContainer.messageMap.get(userId);
-        for (Long id : idList) {
-           if (messageListMap != null && messageListMap.get(id) != null){
-               messageNumberMap.put(id, messageListMap.get(id).size());
-               if(messageListMap.get(id).size() != 0) {
-                   messageMap.put(id, messageListMap.get(id).get(messageListMap.get(id).size() - 1));
-               }
-           }else {
-               messageNumberMap.put(id, 0);
-           }
-        }
-        List<Map> mapList = new ArrayList<>();
-        mapList.add(map);
-        mapList.add(messageNumberMap);
-        mapList.add(messageMap);
-        return new Result(Code.SELECT_OK.getCode(), mapList);
+        // 查询用户和群组的未读信息和未读数量
+        List<Map> mapList = friendService.queryStatus(idList, userId);
+        return new Result(Code.OK.getCode(), mapList);
     }
 }

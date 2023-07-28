@@ -10,25 +10,26 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 
+import javax.annotation.Resource;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.Objects;
 
 @Service
 public class LikeService {
-    @Autowired
+    @Resource
     private BlogLikeMapper blogLikeMapper;
 
-    @Autowired
+    @Resource
     private CommentLikeMapper commentLikeMapper;
 
-    @Autowired
+    @Resource
     private StringRedisTemplate stringRedisTemplate;
 
-    @Autowired
+    @Resource
     private BlogMapper blogMapper;
 
-    @Autowired
+    @Resource
     private CommentMapper commentMapper;
 
     public int operateBlogLike(String token, Long blogId, int flag) {
@@ -57,7 +58,7 @@ public class LikeService {
         return blogLikeMapper.insert(blogLike);
     }
 
-    public int operateCommentLike(String token, Long commentId, int flag){
+    public int operateCommentLike(String token, Long commentId, int flag) {
         Long userId = Long.valueOf(Objects.requireNonNull(stringRedisTemplate.opsForValue().get(token)));
         //查询以前是否点赞过该评论
         //如果flag是0则代表删除该点赞信息

@@ -1,33 +1,41 @@
 package com.friendship.service.impl;
 
+import com.friendship.mapper.GroupMessageMapper;
 import com.friendship.mapper.UserGroupMapper;
 import com.friendship.mapper.UserGroupRelationMapper;
 import com.friendship.pojo.UserGroup;
 import com.friendship.pojo.UserGroupRelation;
+import com.friendship.utils.CommonString;
+import com.friendship.websocket.ChatMessageContainer;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.redis.core.HashOperations;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 
+import javax.annotation.Resource;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 
 @Service
 public class UserGroupRelationService {
-    @Autowired
+    @Resource
     private UserGroupRelationMapper groupRelationMapper;
 
-    @Autowired
+    @Resource
     private UserGroupMapper userGroupMapper;
 
-    @Autowired
+    @Resource
     private StringRedisTemplate stringRedisTemplate;
+
+    @Resource
+    private GroupMessageMapper groupMessageMapper;
 
     public Integer exitGroupChat(Long groupId, String token) {
         Long userId = Long.valueOf(stringRedisTemplate.opsForValue().get(token));
@@ -68,7 +76,7 @@ public class UserGroupRelationService {
                 Map<String, Object> map = new HashMap<>();
                 map.put("userId", u);
                 map.put("userNickname", opsForHash.get("user_" + u, "nickname"));
-                map.put("userAvatar", "http://localhost:8888/static/upload/" + opsForHash.get("user_" + u, "avatar"));
+                map.put("userAvatar", CommonString.RESOURCES_ADDRESS + opsForHash.get("user_" + u, "avatar"));
                 map.put("groupId", p.getId());
                 map.put("groupName", p.getGroupName());
                 map.put("groupAvatar", p.getGroupAvatar());
@@ -144,10 +152,23 @@ public class UserGroupRelationService {
     public List<Map<String, Object>> getGroupByUserId(String token) {
         Long userId = Long.valueOf(stringRedisTemplate.opsForValue().get(token));
         List<Map<String, Object>> list = groupRelationMapper.selectGroupByUserId(userId);
+        Map<Long, Map<Long, AtomicInteger>> groupMessageNumberMap = ChatMessageContainer.groupMessageNumberMap;
         return list.stream().map(p -> {
             UserGroup group = userGroupMapper.selectById((Long) p.get("groupId"));
             p.put("groupAvatar", group.getGroupAvatar());
             p.put("groupName", group.getGroupName());
+            // 再得到群的未读信息数量和最新的一条群信息
+            String message = groupMessageMapper.selectLatestGroupMessage((Long) p.get("groupId"));
+            p.put("message", message == null ? "" : message);
+            // 得到群的未读信息
+            Long groupId = (Long) p.get("groupId");
+            if (groupMessageNumberMap.get(userId) != null && groupMessageNumberMap.get(userId).get(groupId) != null) {
+                // 读取未读信息的数量
+               p.put("unreadMessageNumber", groupMessageNumberMap.get(userId).get(groupId).get());
+            } else {
+                // 没有的话则设置为0
+               p.put("unreadMessageNumber", 0);
+            }
             return p;
         }).collect(Collectors.toCollection(ArrayList::new));
     }

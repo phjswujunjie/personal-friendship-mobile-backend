@@ -11,6 +11,6 @@ public class HandleException {
     @ExceptionHandler(Exception.class)
     public Result handleException(Exception e) {
         e.printStackTrace();
-        return new Result(Code.EXCEPTION_OCCURRED.getCode(), "发生异常");
+        return new Result(Code.INTERNAL_ERROR.getCode(), "发生异常");
     }
 }

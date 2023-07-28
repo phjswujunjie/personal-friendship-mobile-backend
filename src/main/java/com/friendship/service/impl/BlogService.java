@@ -5,6 +5,7 @@ import com.friendship.mapper.FriendlyRelationshipMapper;
 import com.friendship.pojo.Blog;
 import com.friendship.mapper.BlogMapper;
 import com.friendship.mapper.UserMapper;
+import com.friendship.utils.CommonString;
 import com.friendship.utils.TokenRedis;
 import com.google.gson.Gson;
 import org.jetbrains.annotations.NotNull;
@@ -15,6 +16,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.util.ResourceUtils;
 import org.springframework.web.multipart.MultipartFile;
 
+import javax.annotation.Resource;
 import javax.servlet.http.HttpServletRequest;
 import java.io.File;
 import java.text.SimpleDateFormat;
@@ -28,19 +30,18 @@ import java.util.UUID;
 import java.util.stream.Stream;
 
 @Service
-@SuppressWarnings("all")
 public class BlogService {
-    @Autowired
+    @Resource
     private StringRedisTemplate stringRedisTemplate;
-    @Autowired
+    @Resource
     private UserMapper userMapper;
-    @Autowired
+    @Resource
     private BlogMapper blogMapper;
-    @Autowired
+    @Resource
     private FriendService friendService;
-    @Autowired
+    @Resource
     private FriendlyRelationshipMapper friendlyRelationshipMapper;
-    @Autowired
+    @Resource
     private BlogLikeMapper blogLikeMapper;
 
     /**
@@ -133,6 +134,7 @@ public class BlogService {
 
     /**
      * 返回用户所关注的人的全部博客
+     *
      * @param token: 用户的token信息
      * @return
      */
@@ -156,6 +158,7 @@ public class BlogService {
      * @return: 是否成功删除
      */
     public int deleteBlogById(Long id) {
+        // TODO: 这里还应该需要判断删除博客的人是否为博客的主人或者管理员
         return blogMapper.deleteBlogById(id);
     }
 
@@ -192,7 +195,7 @@ public class BlogService {
             map.put("isSelf", isSelf);
             map.put("selfId", selfId);
             map.put("selfNickname", stringRedisTemplate.opsForHash().get("user_" + selfId, "nickname"));
-            map.put("selfAvatar", "http://localhost:8888/static/upload/" + selfAvatar);
+            map.put("selfAvatar", CommonString.RESOURCES_ADDRESS + selfAvatar);
             //如果不是本人的博客, 则查询此博客的拥有者与本人之间的关系
             if (!isSelf) {
                 int i = friendService.queryRelation(token, Long.valueOf(userId));
@@ -210,13 +213,13 @@ public class BlogService {
     private void processBlogData(Map<String, Object> map) {
         String userId = map.get("userId") + "";
         map.put("userNickname", stringRedisTemplate.opsForHash().get("user_" + userId, "nickname"));
-        map.put("userAvatar", "http://localhost:8888/static/upload/" + stringRedisTemplate.opsForHash().get("user_" + userId, "avatar"));
+        map.put("userAvatar", CommonString.RESOURCES_ADDRESS + stringRedisTemplate.opsForHash().get("user_" + userId, "avatar"));
         String[] image = map.get("image").toString().split(";");
-        List<String> imageStream = Stream.of(image).map(i -> "http://localhost:8888/static/upload/" + i).toList();
+        List<String> imageStream = Stream.of(image).map(i -> CommonString.RESOURCES_ADDRESS + i).toList();
         map.put("image", imageStream);
         String[] video = map.get("video").toString().split(";");
-        List<String> videoList = Stream.of(video).map(v -> "http://localhost:8888/static/upload/" + v).toList();
+        List<String> videoList = Stream.of(video).map(v -> CommonString.RESOURCES_ADDRESS + v).toList();
         map.put("video", videoList);
-        map.put("userUrl", "http://localhost:8082/u/" + map.get("userId"));
+        map.put("userUrl", CommonString.FRONTEND_ADDRESS + "u/" + map.get("userId"));
     }
 }

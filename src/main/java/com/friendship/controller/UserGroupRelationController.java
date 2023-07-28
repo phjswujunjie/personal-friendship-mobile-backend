@@ -1,5 +1,6 @@
 package com.friendship.controller;
 
+import com.friendship.accessControl.LoginRequired;
 import com.friendship.mapper.UserGroupMapper;
 import com.friendship.pojo.Code;
 import com.friendship.pojo.Result;
@@ -9,6 +10,7 @@ import org.apache.ibatis.annotations.Param;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
+import javax.annotation.Resource;
 import javax.servlet.http.HttpServletRequest;
 import java.util.List;
 import java.util.Map;
@@ -16,8 +18,9 @@ import java.util.Map;
 @RestController
 @RequestMapping("/userGroupRelations")
 @CrossOrigin(originPatterns = {"*"}, allowCredentials = "true")
+@LoginRequired
 public class UserGroupRelationController {
-    @Autowired
+    @Resource
     private UserGroupRelationService groupRelationService;
 
     /**
@@ -31,9 +34,9 @@ public class UserGroupRelationController {
         String token = request.getHeader("token");
         Integer result = groupRelationService.applyToJoinGroup(groupId, token);
         if (result == 1) {
-            return new Result(Code.INSERT_OK.getCode(), "加入成功!!");
+            return new Result(Code.OK.getCode(), "加入成功!!");
         } else {
-            return new Result(Code.INSERT_ERR.getCode(), "加入失败!!");
+            return new Result(Code.BAD_REQUEST.getCode(), "加入失败!!");
         }
     }
 
@@ -48,9 +51,9 @@ public class UserGroupRelationController {
     public Result allowUserJoinGroup(HttpServletRequest request, Long userId, Long groupId) {
         Integer result = groupRelationService.allowUserJoinGroup(request.getHeader("token"), userId, groupId);
         if (result == null) {
-            return new Result(Code.ILLEGAL_REQUEST.getCode(), "非法请求");
+            return new Result(Code.FORBIDDEN.getCode(), "非法请求");
         }
-        return new Result(Code.UPDATE_OK.getCode(), "更新成功");
+        return new Result(Code.OK.getCode(), "更新成功");
     }
 
     /**
@@ -61,13 +64,13 @@ public class UserGroupRelationController {
     @GetMapping("/leader")
     public Result getAllApplyByGroupLeaderId(HttpServletRequest request) {
         List<Map<String, Object>> applyList = groupRelationService.getAllApplyByGroupLeaderId(request.getHeader("token"));
-        return new Result(Code.SELECT_OK.getCode(), applyList);
+        return new Result(Code.OK.getCode(), applyList);
     }
 
     @GetMapping("/leader/unread")
     public Result getUnreadEnterGroupMessageNumber(HttpServletRequest request){
         Long messageNumber = groupRelationService.getUnreadEnterGroupMessageNumber(request.getHeader("token"));
-        return new Result(Code.SELECT_OK.getCode(), messageNumber);
+        return new Result(Code.OK.getCode(), messageNumber);
     }
 
 
@@ -80,15 +83,15 @@ public class UserGroupRelationController {
     public Result getGroupByUserId(HttpServletRequest request) {
         String token = request.getHeader("token");
         List<Map<String, Object>> groups = groupRelationService.getGroupByUserId(token);
-        return new Result(Code.SELECT_OK.getCode(), groups);
+        return new Result(Code.OK.getCode(), groups);
     }
 
     @DeleteMapping("/{groupId}")
     public Result exitGroupChat(@PathVariable Long groupId, HttpServletRequest request) {
         Integer result = groupRelationService.exitGroupChat(groupId, request.getHeader("token"));
         if (result != null) {
-            return new Result(Code.DELETE_OK.getCode(), "退出成功!");
+            return new Result(Code.OK.getCode(), "退出成功!");
         }
-        return new Result(Code.DELETE_ERR.getCode(), "退出失败!");
+        return new Result(Code.BAD_REQUEST.getCode(), "退出失败!");
     }
 }

@@ -1,5 +1,6 @@
 package com.friendship.controller;
 
+import com.friendship.accessControl.LoginRequired;
 import com.friendship.pojo.Code;
 import com.friendship.pojo.Result;
 import com.friendship.service.impl.LikeService;
@@ -9,18 +10,19 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import javax.annotation.Resource;
 import javax.servlet.http.HttpServletRequest;
 
 /**
  *  处理点赞博客, 评论, 回复操作的类
  */
 @RestController
-@SuppressWarnings("all")
 @RequestMapping("/likes")
 @CrossOrigin(originPatterns = {"*"}, allowCredentials = "true")
+@LoginRequired
 public class LikeController {
 
-    @Autowired
+    @Resource
     private LikeService likeService;
 
     /**
@@ -32,12 +34,11 @@ public class LikeController {
      */
     @PostMapping("/blog")
     public Result operateBlogLike(HttpServletRequest request, Long blogId, int flag){
-        System.out.println(blogId);
         int i = likeService.operateBlogLike(request.getHeader("token"), blogId, flag);
         if (i == 0){
-            return new Result(Code.INSERT_OK.getCode(), "插入成功");
+            return new Result(Code.OK.getCode(), "插入成功");
         }else {
-            return new Result(Code.INSERT_ERR.getCode(), "插入失败");
+            return new Result(Code.BAD_REQUEST.getCode(), "插入失败");
         }
     }
 
@@ -45,9 +46,9 @@ public class LikeController {
     public Result operateCommentLike(HttpServletRequest request, Long commentId, int flag){
         int i = likeService.operateCommentLike(request.getHeader("token"), commentId, flag);
         if (i == 0){
-            return new Result(Code.INSERT_OK.getCode(), "插入成功");
+            return new Result(Code.OK.getCode(), "插入成功");
         }else {
-            return new Result(Code.INSERT_ERR.getCode(), "插入失败");
+            return new Result(Code.BAD_REQUEST.getCode(), "插入失败");
         }
     }
 }

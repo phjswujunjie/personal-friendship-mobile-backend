@@ -4,6 +4,7 @@ import com.friendship.mapper.BlogMapper;
 import com.friendship.mapper.CommentMapper;
 import com.friendship.mapper.ReplyMapper;
 import com.friendship.pojo.Reply;
+import com.friendship.utils.CommonString;
 import com.google.gson.Gson;
 import org.checkerframework.checker.units.qual.A;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -11,6 +12,7 @@ import org.springframework.data.redis.core.HashOperations;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 
+import javax.annotation.Resource;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
@@ -18,22 +20,22 @@ import java.util.stream.Collectors;
 
 @Service
 public class ReplyService {
-    @Autowired
+    @Resource
     private ReplyMapper replyMapper;
 
-    @Autowired
+    @Resource
     private CommentMapper commentMapper;
 
-    @Autowired
+    @Resource
     private BlogMapper blogMapper;
 
-    @Autowired
+    @Resource
     HashOperations<String, Object, Object> opsForHash;
 
-    @Autowired
+    @Resource
     private Gson gson;
 
-    @Autowired
+    @Resource
     private StringRedisTemplate stringRedisTemplate;
     public Map<String, Object> createReply(Reply reply, String token){
         Long userId = Long.valueOf(Objects.requireNonNull(stringRedisTemplate.opsForValue().get(token)));
@@ -83,16 +85,16 @@ public class ReplyService {
 
     private Map<String, Object> processReplyData(Map<String, Object> p) {
         // 回复拥有者的信息
-        p.put("ownerAvatar", "http://localhost:8888/static/upload/" + opsForHash.get("user_" + p.get("ownerId"), "avatar"));
+        p.put("ownerAvatar", CommonString.RESOURCES_ADDRESS + opsForHash.get("user_" + p.get("ownerId"), "avatar"));
         p.put("ownerNickname", opsForHash.get("user_" + p.get("ownerId"), "nickname"));
-        p.put("ownerHomepage", "http://localhost:8082/u/" + p.get("ownerId"));
+        p.put("ownerHomepage", CommonString.FRONTEND_ADDRESS + "u/" + p.get("ownerId"));
         // 回复对象的信息
         // 如果replyId不为-1才查询回复对象的信息, 为-1则代表为一级回复, 无需查询回复对象的信息
         if (("-1").equals(p.get("replyId") + "")) {
             return p;
         }
         p.put("replyObjectNickname", opsForHash.get("user_" + p.get("replyObjectId"), "nickname"));
-        p.put("replyObjectHomepage", "http://localhost:8082/u/" + p.get("replyObjectId"));
+        p.put("replyObjectHomepage", CommonString.FRONTEND_ADDRESS + "u/" + p.get("replyObjectId"));
         return p;
     }
 

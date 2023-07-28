@@ -4,7 +4,9 @@ import com.friendship.mapper.GroupMessageMapper;
 import com.friendship.mapper.UserGroupRelationMapper;
 import com.friendship.pojo.GroupMessage;
 import com.friendship.pojo.UserGroupRelation;
+import com.friendship.utils.CommonString;
 import com.google.gson.Gson;
+import org.checkerframework.checker.units.qual.C;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.redis.core.HashOperations;
 import org.springframework.data.redis.core.StringRedisTemplate;
@@ -19,6 +21,8 @@ import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicInteger;
 
 @ServerEndpoint("/groupWebSocket")
 @Component
@@ -84,8 +88,34 @@ public class GroupWebSocket {
                 if (ChatMessageContainer.userGroupMap.get(id) != null) {
                     Session userSession = ChatMessageContainer.userGroupMap.get(id).getSession();
                     userSession.getBasicRemote().sendText(g.toJson(messageMap));
+                } else {
+                    // 不存在, 则将未读信息的数量存放到容器中
+                    // 得到群的id
+                    Long groupId = Long.valueOf(messageMap.get("groupId") + "");
+                    Map<Long, Map<Long, AtomicInteger>> groupMessageNumberMap = ChatMessageContainer.groupMessageNumberMap;
+                    if (groupMessageNumberMap.get(id) == null) {
+                        // 因为可能遇到并发的问题(群组中存在多个用户), 从而进行了多个容器的创建, 所以要锁住该操作
+                        synchronized (GroupWebSocket.class) {
+                            // 如果群的其他用户在容器中不存在未读信息容器, 则进行创建
+                            Map<Long, AtomicInteger> atomicIntegerMap = new ConcurrentHashMap<>();
+                            // 并且将未读信息设置为1
+                            atomicIntegerMap.put(groupId, new AtomicInteger(1));
+                            // 将用户的容器加入
+                            groupMessageNumberMap.put(id, atomicIntegerMap);
+                        }
+                    } else if (groupMessageNumberMap.get(id).get(groupId) == null) {
+                        // 可能多个群有未读信息, 造成容器的多次创建, 加锁即可
+                        // 使用ChatMessageContainer这个类加锁, 因为当我们使用GroupWebSocket加锁时可能该锁正在被使用, 而这两个操作是
+                        // 无关的操作, 没必要使用同一把锁降低性能
+                        synchronized (ChatMessageContainer.class) {
+                            // 如果用户的该群组的未读信息容器不存在, 则进行创建, 并将未读信息设置为1
+                            groupMessageNumberMap.get(id).put(groupId, new AtomicInteger(1));
+                        }
+                    } else {
+                        // 如果用户的未读信息容器存在, 将将未读信息加1即可, 使用乐观锁进行加1的操作
+                        groupMessageNumberMap.get(id).get(groupId).incrementAndGet();
+                    }
                 }
-                // TODO: 不存在可以做储存用户未读信息的功能
             }
         }
     }
@@ -94,16 +124,15 @@ public class GroupWebSocket {
     public void onClose(Session session) {
         // 清除用户的session信息
         ChatMessageContainer.userGroupMap.remove(userId);
-        System.out.println("主页面开始关闭");
     }
 
-    private void processMessageData (Map<String, Object> messageMap, GroupMessage groupMessage) {
+    private void processMessageData(Map<String, Object> messageMap, GroupMessage groupMessage) {
         Long userId = groupMessage.getMessageOwnerId();
         HashOperations<String, Object, Object> opsForHash = stringRedisTemplate.opsForHash();
         messageMap.put("createTime", groupMessage.getMessageCreateTime());
         messageMap.put("media", groupMessage.getMessageMedia());
         messageMap.put("id", groupMessage.getId());
         messageMap.put("nickname", opsForHash.get("user_" + userId, "nickname"));
-        messageMap.put("avatar", "http://localhost:8888/static/upload/" + opsForHash.get("user_" + userId, "avatar"));
+        messageMap.put("avatar", CommonString.RESOURCES_ADDRESS + opsForHash.get("user_" + userId, "avatar"));
     }
 }

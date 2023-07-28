@@ -1,6 +1,7 @@
 package com.friendship.websocket;
 
 //根据是否登录操作用户的上线和下线信息
+
 import com.friendship.mapper.UserMapper;
 import com.google.gson.Gson;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -37,12 +38,18 @@ public class SaveLoginInfoWebSocket {
     @OnMessage
     public void onMessage(String message, Session session) throws Exception {
         Gson g = new Gson();
-        userId = Long.valueOf( (String) g.fromJson(message, Map.class).get("userId"));
+        userId = Long.valueOf((String) g.fromJson(message, Map.class).get("userId"));
         //创建用户上线登录的信息
         if (userMapper.userIsNotExists(userId) == 1) {
-            FriendshipWebSocket friendshipWebSocket = new FriendshipWebSocket();
-            ChatMessageContainer.userMap.put(userId, friendshipWebSocket);
-            System.out.println("userMap:" + ChatMessageContainer.userMap);
+            if (ChatMessageContainer.userMap.get(userId) == null) {
+                synchronized (SaveLoginInfoWebSocket.class) {
+                    if (ChatMessageContainer.userMap.get(userId) == null) {
+                        FriendshipWebSocket friendshipWebSocket = new FriendshipWebSocket();
+                        friendshipWebSocket.setUserId(userId);
+                        ChatMessageContainer.userMap.put(userId, friendshipWebSocket);
+                    }
+                }
+            }
         }
 //        将用户未查看的信息条数推送到客户端
         int messageNumber = 0;
@@ -51,7 +58,6 @@ public class SaveLoginInfoWebSocket {
             for (List<Map<String, Object>> list : longListMap.values()) {
                 messageNumber += list.size();
             }
-            System.out.println("longListMap" + longListMap);
         }
         session.getBasicRemote().sendText(messageNumber + "");
     }
@@ -60,12 +66,10 @@ public class SaveLoginInfoWebSocket {
     @OnClose
     public void onClose(Session session) {
         ChatMessageContainer.userMap.remove(userId);
-        System.out.println("主页面开始关闭");
     }
 
     @OnError
     public void onError(Session session, Throwable throwable) {
-        System.out.println("连接异常");
         throwable.printStackTrace();
     }
 }

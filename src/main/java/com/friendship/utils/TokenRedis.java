@@ -4,17 +4,11 @@ import com.friendship.mapper.UserMapper;
 import com.friendship.pojo.User;
 import com.google.gson.Gson;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.data.redis.core.HashOperations;
-import org.springframework.data.redis.core.ListOperations;
-import org.springframework.data.redis.core.StringRedisTemplate;
-import org.springframework.data.redis.core.ValueOperations;
+import org.springframework.data.redis.core.*;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
+import java.util.*;
 import java.util.concurrent.TimeUnit;
 
 @Component
@@ -28,10 +22,9 @@ public class TokenRedis {
     @Scheduled(cron = "0 30 0 * * *")
     public void updateUserInfoByRegular(){
         System.out.println("定时任务执行了......");
-        ListOperations<String, String> stringStringListOperations = stringRedisTemplate.opsForList();
+        SetOperations<String, String> stringSetOperations = stringRedisTemplate.opsForSet();
         HashOperations<String, Object, Object> opsForHash = stringRedisTemplate.opsForHash();
-        Long idList = stringStringListOperations.size("id_list");
-        List<String> userId = stringStringListOperations.range("id_list", 0, idList);
+        Set<String> userId = stringSetOperations.members("id_set");
         Gson g = new Gson();
         for (String id : userId) {
             Map<Object, Object> user = opsForHash.entries("user_" + id);

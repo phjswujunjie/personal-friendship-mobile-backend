@@ -4,6 +4,7 @@ import com.friendship.mapper.BlogMapper;
 import com.friendship.mapper.FriendlyRelationshipMapper;
 import com.friendship.pojo.User;
 import com.friendship.mapper.UserMapper;
+import com.friendship.utils.CommonString;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.redis.core.HashOperations;
 import org.springframework.data.redis.core.StringRedisTemplate;
@@ -11,6 +12,7 @@ import org.springframework.data.redis.core.ValueOperations;
 import org.springframework.stereotype.Service;
 import org.springframework.util.ResourceUtils;
 
+import javax.annotation.Resource;
 import java.io.BufferedOutputStream;
 import java.io.File;
 import java.io.FileOutputStream;
@@ -19,18 +21,17 @@ import java.util.*;
 import java.util.concurrent.TimeUnit;
 
 @Service
-@SuppressWarnings("all")
 public class PersonalInfoService {
-    @Autowired
+    @Resource
     private UserMapper userMapper;
 
-    @Autowired
+    @Resource
     private FriendlyRelationshipMapper friendMapper;
 
-    @Autowired
+    @Resource
     private StringRedisTemplate stringRedisTemplate;
 
-    @Autowired
+    @Resource
     private BlogMapper blogMapper;
 
     /**
@@ -107,7 +108,13 @@ public class PersonalInfoService {
         Long id = Long.valueOf(redis.get(token));
         //返回结果信息
         Map map = stringRedisTemplate.opsForHash().entries("user_" + id);
-        System.out.println(map);
+        // 如果redis中没有基本信息, 则去redis中查询
+        if (map.size() == 0) {
+            map = userMapper.getAllInfoById(id);
+            map.put("id", map.get("id") + "");
+            stringRedisTemplate.opsForHash().putAll("user_" + id, map);
+            stringRedisTemplate.opsForSet().add("id_set", id + "");
+        }
         map.put("followNumber", friendMapper.getAllFollowNumber(id));
         map.put("fansNumber",  friendMapper.getAllFansNumber(id));
         map.put("blogNumber", blogMapper.selectBlogNumber(id));
@@ -191,8 +198,8 @@ public class PersonalInfoService {
     public List<Map<String, Object>> searchUserByCondition(String condition) {
         List<Map<String, Object>> userByCondition = userMapper.getUserByCondition(condition);
         List<Map<String, Object>> mapList = userByCondition.stream().map(p -> {
-            p.put("id", "http://localhost:8082/u/" + p.get("id") + "/blog");
-            p.put("avatar", "http://localhost:8888/static/upload/" + p.get("avatar"));
+            p.put("id", CommonString.FRONTEND_ADDRESS + "u/" + p.get("id") + "/blog");
+            p.put("avatar", CommonString.RESOURCES_ADDRESS + p.get("avatar"));
             return p;
         }).toList();
         return mapList;

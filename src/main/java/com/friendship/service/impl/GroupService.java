@@ -2,9 +2,11 @@ package com.friendship.service.impl;
 
 import com.friendship.mapper.UserGroupMapper;
 import com.friendship.mapper.UserGroupRelationMapper;
+import com.friendship.mapper.UserMapper;
 import com.friendship.pojo.User;
 import com.friendship.pojo.UserGroup;
 import com.friendship.pojo.UserGroupRelation;
+import com.friendship.utils.CommonString;
 import com.friendship.utils.MD5;
 import com.friendship.utils.TokenRedis;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -14,6 +16,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.util.ResourceUtils;
 import org.springframework.web.multipart.MultipartFile;
 
+import javax.annotation.Resource;
 import java.io.File;
 import java.io.IOException;
 import java.time.LocalDate;
@@ -23,14 +26,17 @@ import java.util.*;
 
 @Service
 public class GroupService {
-    @Autowired
+    @Resource
     private UserGroupMapper userGroupMapper;
 
-    @Autowired
+    @Resource
     private UserGroupRelationMapper relationMapper;
 
-    @Autowired
+    @Resource
     private StringRedisTemplate stringRedisTemplate;
+
+    @Resource
+    private UserMapper userMapper;
 
     /**
      * 创建新的群聊
@@ -124,13 +130,13 @@ public class GroupService {
         groupMap.put("isTop", relation.getIsTop());
         list.add(groupMap);
         // 查询群聊中前几个的用户信息, 便于在前端进行展示
-        List<Long> idList = relationMapper.selectAllUserByGroupId(groupId, 0L, 4L);
+        List<Long> idList = relationMapper.selectAllUserByGroupIdByPage(groupId, 0L, 4L);
         HashOperations<String, Object, Object> opsForHash = stringRedisTemplate.opsForHash();
         for (Long id : idList) {
             Map<String, Object> map = new HashMap<>();
             map.put("userId", id);
-            map.put("avatar", "http://localhost:8888/static/upload/" + opsForHash.get("user_" + id, "avatar"));
-            map.put("nickname", opsForHash.get("user_" + id, "nickname"));
+            map.put("avatar", CommonString.RESOURCES_ADDRESS + userMapper.getAllInfoById(id).get("avatar"));
+            map.put("nickname", userMapper.getAllInfoById(id).get("nickname"));
             list.add(map);
         }
         return list;
@@ -177,7 +183,7 @@ public class GroupService {
         groupMap.put("groupName", userGroup.getGroupName());
         // 群号
         groupMap.put("groupId", userGroup.getGroupId());
-        groupMap.put("groupAvatar", "http://localhost:8888/static/upload/" + userGroup.getGroupAvatar());
+        groupMap.put("groupAvatar", CommonString.RESOURCES_ADDRESS + userGroup.getGroupAvatar());
         groupMap.put("groupIntroduction", userGroup.getGroupIntroduction());
         groupMap.put("groupNotice", userGroup.getGroupNotice());
         groupMap.put("groupMemberNumber", userGroup.getGroupMemberNumber());

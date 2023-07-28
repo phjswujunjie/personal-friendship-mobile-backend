@@ -5,11 +5,13 @@ import com.friendship.mapper.CommentLikeMapper;
 import com.friendship.mapper.CommentMapper;
 import com.friendship.pojo.Comment;
 import com.friendship.pojo.CommentLike;
+import com.friendship.utils.CommonString;
 import com.friendship.utils.TokenRedis;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 
+import javax.annotation.Resource;
 import javax.servlet.http.HttpServletRequest;
 import java.util.ArrayList;
 import java.util.List;
@@ -20,16 +22,16 @@ import java.util.stream.Collectors;
 @Service
 public class CommentService {
 
-    @Autowired
+    @Resource
     private CommentMapper commentMapper;
 
-    @Autowired
+    @Resource
     private CommentLikeMapper commentLikeMapper;
 
-    @Autowired
+    @Resource
     private StringRedisTemplate stringRedisTemplate;
 
-    @Autowired
+    @Resource
     private BlogMapper blogMapper;
 
     public Comment createComment(Comment comment, String token){
@@ -43,9 +45,9 @@ public class CommentService {
     public List<Map<String, Object>> getAllCommentByBlogId(Long id, HttpServletRequest request){
         List<Map<String, Object>> allCommentByBlogId = commentMapper.getAllCommentByBlogId(id);
         ArrayList<Map<String, Object>> collect = allCommentByBlogId.stream().map(p -> {
-            p.put("avatar", "http://localhost:8888/static/upload/" + stringRedisTemplate.opsForHash().get("user_" + p.get("ownerId"), "avatar"));
+            p.put("avatar", CommonString.RESOURCES_ADDRESS + stringRedisTemplate.opsForHash().get("user_" + p.get("ownerId"), "avatar"));
             p.put("nickname", stringRedisTemplate.opsForHash().get("user_" + p.get("ownerId"), "nickname"));
-            p.put("homepage", "http://localhost:8082/u/" + p.get("ownerId"));
+            p.put("homepage", CommonString.FRONTEND_ADDRESS + "u/" + p.get("ownerId"));
             return p;
         }).collect(Collectors.toCollection(ArrayList::new));
         // 如果登录了则会查询点赞关系
